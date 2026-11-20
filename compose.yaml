@@ -1,0 +1,29 @@
+# Ev sunucusunda herkese açık kurulum. Yalnızca 127.0.0.1'e bağlanır; dışarıya Tailscale Funnel açar.
+services:
+  yt-indirici:
+    build: .
+    image: yt-indirici:yerel
+    container_name: yt-indirici
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8085:8765"
+    environment:
+      VEKILE_GUVEN: "1"            # IP'yi Tailscale'in X-Forwarded-For başlığından al
+      EN_FAZLA_ESZAMANLI: "2"      # sunucuda aynı anda en fazla iş
+      KISI_BASI_ESZAMANLI: "1"     # kişi başı aynı anda iş
+      SAATLIK_INDIRME: "15"        # kişi başı saatlik indirme
+      SAATLIK_BILGI: "60"          # kişi başı saatlik video bilgisi isteği
+      EN_UZUN_VIDEO_SN: "5400"     # 90 dakikadan uzun videolar reddedilir
+      EN_YUKSEK_KALITE: "1080"     # en fazla 1080p
+      EN_BUYUK_DOSYA: "1500M"      # indirilen kaynak dosya sınırı
+    mem_limit: 1500m
+    cpus: 2
+    read_only: true
+    volumes:
+      - gecici:/tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
+volumes:
+  gecici:

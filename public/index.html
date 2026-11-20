@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YT İndirici</title>
+  <link rel="stylesheet" href="/stil.css">
+</head>
+<body>
+  <header class="ust">
+    <div class="logo">YT<span>İndirici</span></div>
+    <form id="adresFormu" class="adres" autocomplete="off">
+      <input id="adres" type="text" placeholder="YouTube bağlantısını yapıştır" spellcheck="false">
+      <button id="getirDugmesi" type="submit">Getir</button>
+    </form>
+  </header>
+
+  <main>
+    <p id="ipucu" class="ipucu">Bir YouTube bağlantısı yapıştır. Kaliteyi ve istediğin saniye aralığını seçip indir.</p>
+    <p id="bilgiHatasi" class="hata" hidden></p>
+    <div id="yukleniyor" class="yukleniyor" hidden><span class="donen"></span> Video bilgisi alınıyor…</div>
+
+    <section id="kart" class="kart" hidden>
+      <div class="ozet">
+        <button id="kucukResimDugmesi" class="kucuk-resim" type="button" title="Önizlemeyi aç">
+          <img id="kucukResim" alt="">
+          <span class="oynat-isareti">▶</span>
+        </button>
+        <div class="ozet-metin">
+          <h1 id="baslikMetni"></h1>
+          <div class="ince"><span id="kanal"></span> · <span id="toplamSure"></span></div>
+          <a id="sayfaBaglantisi" target="_blank" rel="noopener noreferrer">YouTube'da aç ↗</a>
+        </div>
+      </div>
+
+      <div id="onizleme" class="onizleme" hidden>
+        <div class="oynatici-kutusu"><div id="oynatici"></div></div>
+        <div class="onizleme-dugmeleri">
+          <button type="button" id="basiAl">Başı şu ana al</button>
+          <button type="button" id="secimiOynat">Seçimi oynat</button>
+          <button type="button" id="sonuAl">Sonu şu ana al</button>
+        </div>
+      </div>
+
+      <div class="aralik">
+        <div class="kaydirici">
+          <div class="iz"><div id="dolgu" class="dolgu"></div></div>
+          <input id="basKaydirici" type="range" min="0" step="0.1" aria-label="Başlangıç">
+          <input id="sonKaydirici" type="range" min="0" step="0.1" aria-label="Bitiş">
+        </div>
+        <div class="zamanlar">
+          <label>Başlangıç<input id="basZaman" type="text" inputmode="decimal" spellcheck="false"></label>
+          <div id="secilenSure" class="secilen"></div>
+          <label class="sag">Bitiş<input id="sonZaman" type="text" inputmode="decimal" spellcheck="false"></label>
+        </div>
+        <div class="ince-ayar">
+          <button type="button" data-oynat="bas" data-fark="-1">−1 sn</button>
+          <button type="button" data-oynat="bas" data-fark="1">+1 sn</button>
+          <button type="button" id="tumunuSec">Tamamı</button>
+          <button type="button" data-oynat="son" data-fark="-1">−1 sn</button>
+          <button type="button" data-oynat="son" data-fark="1">+1 sn</button>
+        </div>
+      </div>
+
+      <div class="ayarlar">
+        <div class="satir">
+          <span class="etiket">Biçim</span>
+          <div class="secenekler" role="radiogroup">
+            <label><input type="radio" name="bicim" value="mp4" checked> MP4</label>
+            <label><input type="radio" name="bicim" value="mp3"> MP3</label>
+            <label><input type="radio" name="bicim" value="wav"> WAV</label>
+          </div>
+        </div>
+        <div class="satir" id="kaliteSatiri">
+          <label class="etiket" for="kalite">Kalite</label>
+          <select id="kalite"></select>
+        </div>
+        <div class="satir">
+          <label class="etiket" for="dosyaAdi">Başlık</label>
+          <input id="dosyaAdi" type="text" spellcheck="false">
+        </div>
+
+        <button id="indirDugmesi" class="indir" type="button">İndir</button>
+
+        <div id="ilerleme" class="ilerleme" hidden>
+          <div class="cubuk"><div id="ilerlemeDolgu"></div></div>
+          <div id="ilerlemeMetni" class="ince"></div>
+        </div>
+        <p id="indirmeHatasi" class="hata" hidden></p>
+      </div>
+    </section>
+  </main>
+
+  <footer>Yalnızca kişisel kullanım için. Telif hakkı olan içerikleri indirirken haklara saygı göster.</footer>
+  <script type="module" src="/uygulama.js"></script>
+</body>
+</html>
