@@ -57,6 +57,10 @@ main { flex: 1; width: 100%; max-width: 640px; margin: 32px auto; padding: 0 16p
 
 .ipucu { text-align: center; color: #a9a9b3; }
 .hata { color: #fff; background: var(--hata); padding: 10px 14px; border-radius: 10px; }
+.uyari { margin: 4px 0 12px; color: #4a3600; background: #fff4d1; border: 1px solid var(--sari); border-left-width: 5px; padding: 10px 14px; border-radius: 10px; font-size: 14px; line-height: 1.45; }
+.uyari::before { content: '⚠ '; }
+.tahmin { margin: 2px 0 8px; }
+.indir:disabled { opacity: .45; cursor: not-allowed; }
 .kart .hata { margin: 12px 0 0; }
 .yukleniyor { text-align: center; color: #c9c9d1; }
 .donen {

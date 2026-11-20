@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import {
   youtubeAdresiMi, kaliteleriCikar, istegiDogrula, indirmeArgumanlari,
   dosyaAdiTemizle, icerikBasligi, ffmpegGerekliMi, kesmeArgumanlari, CIKTI_UZANTISI,
-  Sinirlayici, istemciIp,
+  Sinirlayici, istemciIp, boyutlariCikar, secimBoyutu, boyutUyarisi, MB,
 } from './yardimci.js';
 
 const ortam = (ad, varsayilan) => (process.env[ad] === undefined || process.env[ad] === '' ? varsayilan : process.env[ad]);
@@ -27,6 +27,8 @@ const SAATLIK_BILGI = sayi('SAATLIK_BILGI', 0);
 const EN_UZUN_VIDEO_SN = sayi('EN_UZUN_VIDEO_SN', 0);
 const EN_YUKSEK_KALITE = sayi('EN_YUKSEK_KALITE', 0);
 const EN_BUYUK_DOSYA = ortam('EN_BUYUK_DOSYA', '');
+// Tahmini boyutu bunu aşan indirmeler hiç başlatılmaz (MB, 0 = sınırsız).
+const EN_BUYUK_BOYUT = sayi('EN_BUYUK_BOYUT_MB', 500) * MB;
 const JS_MOTORU = ortam('JS_MOTORU', 'node');
 
 const KOK = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -42,6 +44,7 @@ const STATIK = {
   '/stil.css': ['stil.css', 'text/css; charset=utf-8'],
   '/uygulama.js': ['uygulama.js', 'text/javascript; charset=utf-8'],
   '/zaman.js': ['zaman.js', 'text/javascript; charset=utf-8'],
+  '/boyut.js': ['boyut.js', 'text/javascript; charset=utf-8'],
 };
 
 const GUVENLIK_BASLIKLARI = {
@@ -120,6 +123,8 @@ async function videoBilgisi(url) {
     sayfa: bilgi.webpage_url || url,
     kaliteler,
     enUzunSure: EN_UZUN_VIDEO_SN || 0,
+    boyutlar: boyutlariCikar(bilgi.formats, Number(bilgi.duration) || 0, kaliteler, EN_YUKSEK_KALITE),
+    enBuyukBoyut: EN_BUYUK_BOYUT,
   };
   bilgiOnbellegi.set(url, { veri, zaman: Date.now() });
   return { veri };
@@ -172,6 +177,10 @@ async function indirmeBaslat(req, res, ip) {
   if (EN_YUKSEK_KALITE && secim.bicim === 'mp4' && (!secim.kalite || secim.kalite > EN_YUKSEK_KALITE)) {
     secim.kalite = EN_YUKSEK_KALITE;
   }
+
+  // Çok büyük indirmeleri baştan reddet (saatlik hakkı harcamadan).
+  const boyutHatasi = boyutUyarisi(secimBoyutu(veri.boyutlar, secim.bicim, secim.kalite, secim.son - secim.bas), EN_BUYUK_BOYUT);
+  if (boyutHatasi) return jsonGonder(res, 413, { hata: boyutHatasi });
 
   if (!indirmeSiniri.dene(ip)) {
     return jsonGonder(res, 429, { hata: `Saatte en fazla ${SAATLIK_INDIRME} indirme yapılabilir. Biraz sonra tekrar dene.` });

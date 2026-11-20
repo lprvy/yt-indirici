@@ -45,7 +45,8 @@ Sınırlar `compose.yaml` içindeki ortam değişkenleriyle ayarlanır:
 | `SAATLIK_INDIRME`, `SAATLIK_BILGI` | Kişi başı saatlik sınırlar |
 | `EN_UZUN_VIDEO_SN` | Bundan uzun videolar reddedilir |
 | `EN_YUKSEK_KALITE` | En yüksek çözünürlük (ör. 1080) |
-| `EN_BUYUK_DOSYA` | İndirilen dosya için boyut sınırı (ör. `1500M`) |
+| `EN_BUYUK_BOYUT_MB` | Tahmini boyutu bunu aşan indirmeler uyarıyla reddedilir (varsayılan `500`, `0` = sınırsız). Kalite listesinde her seçeneğin yaklaşık boyutu görünür |
+| `EN_BUYUK_DOSYA` | yt-dlp için yedek boyut sınırı (ör. `500M`): tahmin tutmazsa indirmeyi durdurur |
 | `VEKILE_GUVEN` | `1` ise istemci IP'si `X-Forwarded-For` başlığından okunur |
 
 ## Not

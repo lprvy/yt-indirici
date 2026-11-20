@@ -105,3 +105,50 @@ test('istemci IP: vekile yalnızca açıkça güvenilirse XFF okunur', () => {
   assert.equal(istemciIp('172.18.0.1', 'sahte, 5.6.7.8', true), '5.6.7.8');
   assert.equal(istemciIp('172.18.0.1', '', true), '172.18.0.1');
 });
+
+// ---------- boyut tahmini ve büyük dosya uyarısı ----------
+import { boyutlariCikar, secimBoyutu, boyutUyarisi, boyutYaz, MB } from '../src/yardimci.js';
+
+const SURE = 600;
+const ORNEK_BICIMLER = [
+  { format_id: '140', vcodec: 'none', acodec: 'mp4a.40.2', filesize: 10 * MB },
+  { format_id: '251', vcodec: 'none', acodec: 'opus', filesize: 12 * MB },
+  { format_id: '137', vcodec: 'avc1.640028', acodec: 'none', height: 1080, filesize: 700 * MB },
+  { format_id: '248', vcodec: 'vp9', acodec: 'none', height: 1080, filesize: 900 * MB },
+  { format_id: '136', vcodec: 'avc1.4d401f', acodec: 'none', height: 720, filesize_approx: 300 * MB },
+  { format_id: '18', vcodec: 'avc1.42001E', acodec: 'mp4a.40.2', height: 360, tbr: 500 },
+  { format_id: 'sb0', vcodec: 'none', acodec: 'none', height: 90 },
+];
+
+test('boyut tahmini: h264 görüntü + m4a ses, sınırın altındaki en yüksek kalite', () => {
+  const b = boyutlariCikar(ORNEK_BICIMLER, SURE, [1080, 720, 360]);
+  assert.equal(b.ses, 10 * MB);
+  assert.equal(b[1080], 710 * MB, 'vp9 değil h264 seçilir, ses eklenir');
+  assert.equal(b[720], 310 * MB, 'yaklaşık boyut da kullanılır');
+  assert.equal(b[360], 500 * 125 * SURE, 'sesli birleşik biçime ses eklenmez, bit hızından hesaplanır');
+  assert.equal(b['en-iyi'], 710 * MB);
+  assert.equal(boyutlariCikar(ORNEK_BICIMLER, SURE, [], 720)['en-iyi'], 310 * MB, 'sunucu sınırı en iyiye de uygulanır');
+  assert.deepEqual(boyutlariCikar(undefined, 0, [720]), { ses: null, 'en-iyi': null, 720: null });
+});
+
+test('500 MB üstü uyarı verir, altı vermez, bilinmeyen boyut engellenmez', () => {
+  const b = boyutlariCikar(ORNEK_BICIMLER, SURE, [1080, 720]);
+  const sinir = 500 * MB;
+  const buyuk = boyutUyarisi(secimBoyutu(b, 'mp4', 1080, 30), sinir);
+  assert.match(buyuk, /yaklaşık 710 MB/);
+  assert.match(buyuk, /500 MB'tan büyük indirmeleri yapmak istemiyorum/);
+  assert.equal(boyutUyarisi(secimBoyutu(b, 'mp4', 720, 30), sinir), null);
+  assert.equal(boyutUyarisi(secimBoyutu(b, 'mp3', 192, 600), sinir), null);
+  assert.equal(boyutUyarisi(secimBoyutu({}, 'mp4', 1080, 30), sinir), null, 'tahmin yoksa yedek fren (yt-dlp) devrede');
+  assert.equal(boyutUyarisi(secimBoyutu(b, 'mp4', 1080, 30), 0), null, '0 = sınırsız');
+  // WAV çıktısı aralığa bağlı: 90 dakika ~ 908 MB
+  const wav = boyutUyarisi(secimBoyutu(b, 'wav', null, 5400), sinir);
+  assert.match(wav, /hazırlamak istemiyorum/);
+  assert.equal(boyutUyarisi(secimBoyutu(b, 'wav', null, 60), sinir), null);
+});
+
+test('boyut yazımı', () => {
+  assert.equal(boyutYaz(1.5 * 1024 * MB), '1,5 GB');
+  assert.equal(boyutYaz(620 * MB), '620 MB');
+  assert.equal(boyutYaz(0), '?');
+});

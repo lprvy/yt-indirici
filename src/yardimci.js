@@ -19,6 +19,39 @@ export function youtubeAdresiMi(metin) {
 }
 
 export { saniyeyeCevir, sureYaz };
+export { boyutYaz, secimBoyutu, boyutUyarisi, MB } from '../public/boyut.js';
+
+// Bir biçimin boyutu (bayt): yt-dlp'nin kesin ya da yaklaşık değeri, yoksa bit hızından.
+function bicimBoyutu(b, sure) {
+  return b.filesize || b.filesize_approx || (b.tbr && sure ? b.tbr * 125 * sure : 0) || 0;
+}
+
+// Her kalite için indirilecek toplam boyut tahmini (görüntü + ses), "en-iyi" ve yalnız ses.
+// Seçim, indirmeArgumanlari'ndaki sıralamaya benzer: sınırın altındaki en yüksek çözünürlük, önce h264, sesler m4a.
+export function boyutlariCikar(bicimler, sure, kaliteler = [], enYuksek = 0) {
+  const liste = Array.isArray(bicimler) ? bicimler : [];
+  const sesler = liste.filter((b) => b && b.vcodec === 'none' && b.acodec && b.acodec !== 'none');
+  const m4a = sesler.filter((b) => /^mp4a/.test(b.acodec));
+  const enIyiSes = Math.max(0, ...(m4a.length ? m4a : sesler).map((b) => bicimBoyutu(b, sure)));
+  const videolar = liste.filter((b) => b && b.vcodec && b.vcodec !== 'none' && Number.isInteger(b.height) && b.height > 0);
+
+  const tahmin = (sinir) => {
+    const uygun = videolar.filter((b) => !sinir || b.height <= sinir);
+    if (!uygun.length) return null;
+    const yukseklik = Math.max(...uygun.map((b) => b.height));
+    const ayni = uygun.filter((b) => b.height === yukseklik);
+    const h264 = ayni.filter((b) => /^avc1/.test(b.vcodec));
+    const adaylar = h264.length ? h264 : ayni;
+    const goruntu = Math.max(0, ...adaylar.map((b) => bicimBoyutu(b, sure)));
+    const sesAyri = adaylar.some((b) => !b.acodec || b.acodec === 'none');
+    const toplam = goruntu + (sesAyri ? enIyiSes : 0);
+    return toplam > 0 ? Math.round(toplam) : null;
+  };
+
+  const sonuc = { ses: enIyiSes > 0 ? Math.round(enIyiSes) : null, 'en-iyi': tahmin(enYuksek) };
+  for (const k of kaliteler) sonuc[k] = tahmin(k);
+  return sonuc;
+}
 
 export function dosyaAdiTemizle(ad) {
   const temiz = String(ad ?? '')

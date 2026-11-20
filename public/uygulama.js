@@ -1,4 +1,5 @@
 import { saniyeyeCevir, sureYaz } from '/zaman.js';
+import { boyutYaz, secimBoyutu, boyutUyarisi } from '/boyut.js';
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -10,6 +11,7 @@ const el = {
   basKaydirici: $('basKaydirici'), sonKaydirici: $('sonKaydirici'), dolgu: $('dolgu'),
   basZaman: $('basZaman'), sonZaman: $('sonZaman'), secilen: $('secilenSure'), tumunuSec: $('tumunuSec'),
   kaliteSatiri: $('kaliteSatiri'), kalite: $('kalite'), dosyaAdi: $('dosyaAdi'),
+  tahminiBoyut: $('tahminiBoyut'), boyutUyarisi: $('boyutUyarisi'),
   indir: $('indirDugmesi'), ilerleme: $('ilerleme'), ilerlemeDolgu: $('ilerlemeDolgu'),
   ilerlemeMetni: $('ilerlemeMetni'), indirmeHatasi: $('indirmeHatasi'),
 };
@@ -219,8 +221,14 @@ function kaliteleriDoldur() {
   if (bicim === 'mp4') {
     const kaliteler = durum.video?.kaliteler || [];
     const varsayilan = kaliteler.find((k) => k <= 1080) ?? kaliteler[0];
-    for (const k of kaliteler) el.kalite.append(new Option(`${k}p${k > 1080 ? ' (4K/2K)' : ''}`, String(k), false, k === varsayilan));
-    el.kalite.append(new Option('En iyi', 'en-iyi', false, !kaliteler.length));
+    const b = durum.video?.boyutlar || {};
+    const sinir = durum.video?.enBuyukBoyut || 0;
+    const ek = (bayt) => (bayt ? ` · ~${boyutYaz(bayt)}${sinir && bayt > sinir ? ' (çok büyük)' : ''}` : '');
+    // varsayılan: sınırın altında kalan en yüksek kalite (1080p'yi geçmeden)
+    const sigan = kaliteler.find((k) => k <= 1080 && !(sinir && b[k] > sinir));
+    const secili = sigan ?? varsayilan;
+    for (const k of kaliteler) el.kalite.append(new Option(`${k}p${k > 1080 ? ' (4K/2K)' : ''}${ek(b[k])}`, String(k), false, k === secili));
+    el.kalite.append(new Option(`En iyi${ek(b['en-iyi'])}`, 'en-iyi', false, !kaliteler.length));
   } else if (bicim === 'mp3') {
     for (const k of SES_KALITELERI) el.kalite.append(new Option(`${k} kbps`, String(k), false, k === 192));
   }
@@ -229,9 +237,26 @@ function kaliteleriDoldur() {
 }
 
 for (const r of document.querySelectorAll('input[name=bicim]')) r.addEventListener('change', kaliteleriDoldur);
+el.kalite.addEventListener('change', dugmeYazisiniGuncelle);
+
+// Seçimin tahmini boyutunu yaz; sınırı aşıyorsa uyar ve indirmeyi kapat.
+function boyutuDenetle() {
+  const video = durum.video;
+  if (!video) return false;
+  const bicim = seciliBicim();
+  const kalite = bicim === 'wav' ? null : el.kalite.value;
+  const tahmin = secimBoyutu(video.boyutlar, bicim, kalite, durum.son - durum.bas);
+  const gosterilen = bicim === 'mp4' ? tahmin.indirilen : (tahmin.cikti || tahmin.indirilen);
+  el.tahminiBoyut.textContent = gosterilen ? `Tahmini boyut: ~${boyutYaz(gosterilen)}` : '';
+  const uyari = boyutUyarisi(tahmin, video.enBuyukBoyut);
+  el.boyutUyarisi.textContent = uyari || '';
+  goster(el.boyutUyarisi, !!uyari);
+  return !!uyari;
+}
 
 function dugmeYazisiniGuncelle() {
   if (durum.calisiyor) return;
+  el.indir.disabled = boyutuDenetle();
   const tamami = durum.bas <= 0 && durum.son >= (durum.video?.sure || 0);
   const parca = tamami ? '' : ` · ${sureYaz(durum.bas)} – ${sureYaz(durum.son)}`;
   el.indir.textContent = `İndir: ${seciliBicim().toUpperCase()}${parca}`;

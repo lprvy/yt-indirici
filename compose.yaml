@@ -15,7 +15,8 @@ services:
       SAATLIK_BILGI: "60"          # kişi başı saatlik video bilgisi isteği
       EN_UZUN_VIDEO_SN: "5400"     # 90 dakikadan uzun videolar reddedilir
       EN_YUKSEK_KALITE: "1080"     # en fazla 1080p
-      EN_BUYUK_DOSYA: "1500M"      # indirilen kaynak dosya sınırı
+      EN_BUYUK_BOYUT_MB: "500"     # tahmini boyutu bunu aşan indirmeler uyarıyla reddedilir
+      EN_BUYUK_DOSYA: "500M"       # yedek fren: yt-dlp bu boyutu aşan dosyayı indirmeyi bırakır
     mem_limit: 1500m
     cpus: 2
     read_only: true
