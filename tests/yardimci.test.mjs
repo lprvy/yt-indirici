@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   youtubeAdresiMi, saniyeyeCevir, sureYaz, dosyaAdiTemizle, kaliteleriCikar,
   istegiDogrula, indirmeArgumanlari, icerikBasligi, kesmeArgumanlari, ffmpegGerekliMi,
-  Sinirlayici, istemciIp,
+  Sinirlayici, istemciIp, yonetimIstegiUygunMu,
 } from '../src/yardimci.js';
 
 test('YouTube adresleri tanınır, diğerleri reddedilir', () => {
@@ -151,4 +151,12 @@ test('boyut yazımı', () => {
   assert.equal(boyutYaz(1.5 * 1024 * MB), '1,5 GB');
   assert.equal(boyutYaz(620 * MB), '620 MB');
   assert.equal(boyutYaz(0), '?');
+});
+
+test('yönetim bağlantıları yalnızca doğrudan açılınca çalışır', () => {
+  assert.ok(yonetimIstegiUygunMu({}), 'curl gibi başlıksız istek');
+  assert.ok(yonetimIstegiUygunMu({ 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document', 'sec-fetch-site': 'cross-site' }));
+  assert.ok(!yonetimIstegiUygunMu({ 'sec-fetch-mode': 'no-cors', 'sec-fetch-dest': 'image' }), 'img etiketiyle tetikleme');
+  assert.ok(!yonetimIstegiUygunMu({ 'sec-fetch-mode': 'cors', 'sec-fetch-dest': 'empty' }), 'fetch ile tetikleme');
+  assert.ok(!yonetimIstegiUygunMu({ 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'iframe' }), 'iframe içinde');
 });

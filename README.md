@@ -47,7 +47,14 @@ Sınırlar `compose.yaml` içindeki ortam değişkenleriyle ayarlanır:
 | `EN_YUKSEK_KALITE` | En yüksek çözünürlük (ör. 1080) |
 | `EN_BUYUK_BOYUT_MB` | Tahmini boyutu bunu aşan indirmeler uyarıyla reddedilir (varsayılan `500`, `0` = sınırsız). Kalite listesinde her seçeneğin yaklaşık boyutu görünür |
 | `EN_BUYUK_DOSYA` | yt-dlp için yedek boyut sınırı (ör. `500M`): tahmin tutmazsa indirmeyi durdurur |
+| `YONETIM_PORT` | Aç/kapat sayfasının portu (0 = kapalı). Bu port internete AÇILMAMALI |
+| `DURUM_DOSYASI` | Açık/kapalı durumunun saklandığı dosya (yeniden başlatmada korunur) |
+| `PANO_ADRESI` | Aç/kapat sonrası dönülecek pano adresi (isteğe bağlı) |
 | `VEKILE_GUVEN` | `1` ise istemci IP'si `X-Forwarded-For` başlığından okunur |
+
+## Aç / kapat
+
+`YONETIM_PORT` verilirse ikinci bir küçük sunucu açılır: `/` durum sayfası, `/ac` ve `/kapat` bağlantıları, `/api/durum`. Kapalıyken ana sitedeki her istek "YT Bot şu an kapalı" yanıtı alır (yalnız `/saglik` açık kalır, `herkeseAcik` alanı durumu gösterir) ve süren indirmeler durdurulur. `/ac` ve `/kapat` yalnızca doğrudan tıklanarak açılınca çalışır; başka bir sitenin resim/fetch ile tetiklemesi `Sec-Fetch-*` başlıklarıyla engellenir.
 
 ## Not
 

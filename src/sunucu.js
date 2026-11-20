@@ -13,6 +13,7 @@ import {
   dosyaAdiTemizle, icerikBasligi, ffmpegGerekliMi, kesmeArgumanlari, CIKTI_UZANTISI,
   Sinirlayici, istemciIp, boyutlariCikar, secimBoyutu, boyutUyarisi, MB,
 } from './yardimci.js';
+import { yonetimSunucusu } from './yonetim.js';
 
 const ortam = (ad, varsayilan) => (process.env[ad] === undefined || process.env[ad] === '' ? varsayilan : process.env[ad]);
 const sayi = (ad, varsayilan) => Number(ortam(ad, varsayilan));
@@ -30,6 +31,10 @@ const EN_BUYUK_DOSYA = ortam('EN_BUYUK_DOSYA', '');
 // Tahmini boyutu bunu aşan indirmeler hiç başlatılmaz (MB, 0 = sınırsız).
 const EN_BUYUK_BOYUT = sayi('EN_BUYUK_BOYUT_MB', 500) * MB;
 const JS_MOTORU = ortam('JS_MOTORU', 'node');
+// Yönetim kapısı (aç/kapat). 0 ise açılmaz. Yalnızca Tailscale ağına açılmalı.
+const YONETIM_PORT = sayi('YONETIM_PORT', 0);
+const DURUM_DOSYASI = ortam('DURUM_DOSYASI', '');
+const PANO_ADRESI = ortam('PANO_ADRESI', '');
 
 const KOK = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const GENEL = path.join(KOK, 'public');
@@ -54,6 +59,7 @@ const GUVENLIK_BASLIKLARI = {
 };
 
 const isler = new Map();
+let herkeseAcik = true;
 const bilgiOnbellegi = new Map(); // url -> { veri, zaman }
 const indirmeSiniri = new Sinirlayici(SAATLIK_INDIRME, 60 * 60 * 1000);
 const bilgiSiniri = new Sinirlayici(SAATLIK_BILGI, 60 * 60 * 1000);
@@ -308,6 +314,36 @@ async function statikGonder(res, yol) {
   res.end(icerik);
 }
 
+async function durumuYukle() {
+  if (!DURUM_DOSYASI) return;
+  try {
+    herkeseAcik = JSON.parse(await fsp.readFile(DURUM_DOSYASI, 'utf8')).herkeseAcik !== false;
+  } catch {
+    herkeseAcik = true;
+  }
+}
+
+async function durumuAyarla(acik) {
+  herkeseAcik = acik;
+  if (!acik) for (const is of [...isler.values()]) isiSil(is);
+  if (DURUM_DOSYASI) {
+    await fsp.writeFile(DURUM_DOSYASI, JSON.stringify({ herkeseAcik: acik, degisti: new Date().toISOString() }))
+      .catch((e) => console.error('Durum dosyası yazılamadı:', e.message));
+  }
+  console.log(`YT Bot herkese ${acik ? 'AÇILDI' : 'KAPATILDI'} (${new Date().toISOString()})`);
+}
+
+const KAPALI_SAYFA = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YT Bot kapalı</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0b0d;color:#f1f1f4;
+font:16px/1.5 system-ui,"Segoe UI",sans-serif;text-align:center;padding:16px}h1{font-size:24px;margin:0 0 8px}p{color:#a9a9b3;margin:0}
+span{color:#ffc21a}</style></head><body><div><h1><span>YT</span> Bot şu an kapalı</h1><p>Daha sonra tekrar dene.</p></div></body></html>`;
+
+function kapaliGonder(res, yol) {
+  if (yol.startsWith('/api/')) return jsonGonder(res, 503, { hata: 'YT Bot şu an kapalı. Daha sonra tekrar dene.' });
+  res.writeHead(503, { ...GUVENLIK_BASLIKLARI, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '3600' });
+  res.end(KAPALI_SAYFA);
+}
+
 // Başka sitelerin bu sunucuya tarayıcı üzerinden istek atmasını engelle: köken, sayfanın kendi adresi olmalı.
 function kokenUygunMu(req) {
   const koken = req.headers.origin;
@@ -324,6 +360,10 @@ const sunucu = http.createServer(async (req, res) => {
   try {
     const adres = new URL(req.url, 'http://yerel');
     const yol = adres.pathname;
+    if (req.method === 'GET' && yol === '/saglik') {
+      return jsonGonder(res, 200, { durum: 'iyi', herkeseAcik, durumYazisi: herkeseAcik ? 'AÇIK' : 'KAPALI', calisan: calisanIsler().length });
+    }
+    if (!herkeseAcik) return kapaliGonder(res, yol);
     if (yol.startsWith('/api/') && !kokenUygunMu(req)) return jsonGonder(res, 403, { hata: 'İzin yok.' });
     const ip = istemciIp(req.socket.remoteAddress, req.headers['x-forwarded-for'], VEKILE_GUVEN);
 
@@ -332,7 +372,6 @@ const sunucu = http.createServer(async (req, res) => {
     if (req.method === 'POST' && yol === '/api/indir') return await indirmeBaslat(req, res, ip);
     if (req.method === 'GET' && yol === '/api/durum') return durumGonder(res, adres);
     if (req.method === 'GET' && yol === '/api/dosya') return await dosyaGonder(res, adres);
-    if (req.method === 'GET' && yol === '/saglik') return jsonGonder(res, 200, { durum: 'iyi', calisan: calisanIsler().length });
     jsonGonder(res, 404, { hata: 'Bulunamadı.' });
   } catch (e) {
     console.error(e);
@@ -352,10 +391,23 @@ setInterval(() => {
 
 await fsp.rm(GECICI, { recursive: true, force: true }).catch(() => {});
 await fsp.mkdir(GECICI, { recursive: true });
+await durumuYukle();
+
+let yonetim = null;
+if (YONETIM_PORT) {
+  yonetim = yonetimSunucusu({
+    durumuAl: () => herkeseAcik,
+    durumuAyarla,
+    calisanSayisi: () => calisanIsler().length,
+    pano: PANO_ADRESI,
+  });
+  yonetim.listen(YONETIM_PORT, HOST, () => console.log(`Yönetim kapısı: ${YONETIM_PORT} (herkese açık: ${herkeseAcik ? 'evet' : 'hayır'})`));
+}
 
 for (const sinyal of ['SIGINT', 'SIGTERM']) {
   process.on(sinyal, () => {
     for (const is of isler.values()) is.cocuk?.kill();
+    yonetim?.close();
     sunucu.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 3000).unref();
   });

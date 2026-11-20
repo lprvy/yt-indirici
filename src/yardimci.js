@@ -211,3 +211,12 @@ export function istemciIp(soketIp, xff, vekileGuven) {
   }
   return soketIp || 'bilinmiyor';
 }
+
+// Yönetim kapısında aç/kapat bağlantıları yalnızca adres çubuğundan ya da bir bağlantıya tıklanarak açılınca çalışır.
+// Başka bir sitenin gizlice (resim, fetch, iframe) tetiklemesi engellenir. Sec-Fetch başlığı yoksa (curl vb.) izin verilir;
+// kapı zaten yalnızca Tailscale ağından açılır.
+export function yonetimIstegiUygunMu(basliklar) {
+  const mod = basliklar?.['sec-fetch-mode'];
+  if (mod === undefined) return true;
+  return mod === 'navigate' && basliklar['sec-fetch-dest'] === 'document';
+}
